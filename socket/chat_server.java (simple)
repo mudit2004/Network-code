@@ -1,70 +1,78 @@
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
-public class ChatServer {
+public class chat_server{
+    private List<ObjectOutputStream> clientOutputStreams;
 
-    private ObjectOutputStream output;
-    private ObjectInputStream input;
-    private Socket connection; // for client using TCP communication
-    private ServerSocket server; // listen for clients
-    private int totalClients = 50;
-    private int port = 8888;
-
-    public ChatServer() {
+    public chat_server() {
+        clientOutputStreams = new ArrayList<>();
         startRunning();
     }
 
     public void startRunning() {
         try {
-            server = new ServerSocket(port, totalClients);
+            ServerSocket serverSocket = new ServerSocket(8888);
+
             while (true) {
-                try {
-                    System.out.println("Waiting for Someone to Connect...");
-                    connection = server.accept(); // establishes connection and waits for the client
-                    System.out.println("Connected");
+                Socket clientSocket = serverSocket.accept();
+                System.out.println("Client connected: " + clientSocket);
 
-                    output = new ObjectOutputStream(connection.getOutputStream());
-                    output.flush();
-                    input = new ObjectInputStream(connection.getInputStream());
+                ObjectOutputStream outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+                clientOutputStreams.add(outputStream);
 
-                    whileChatting();
-
-                } catch (EOFException eofException) {
-                }
+                Thread clientHandler = new Thread(new ClientHandler(clientSocket, outputStream));
+                clientHandler.start();
             }
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    private void whileChatting() throws IOException {
-        String message = "";
-        int ctr = 0;
-        do {
-            ctr++;
+    private void broadcastMessage(String message) {
+        for (ObjectOutputStream outputStream : clientOutputStreams) {
             try {
-                message = (String) input.readObject(); // casting object to string
-                System.out.println("\n" + message);
-            } catch (ClassNotFoundException classNotFoundException) {
+                outputStream.writeObject(message);
+                outputStream.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } while (ctr < 10);
+        }
     }
 
-    private void sendMessage(String message) {
-        try {
-            System.out.println("Server - " + message);
-            output.writeObject("Server - " + message);
-            output.flush();
-        } catch (IOException ioException) {
-            System.out.println("Unable to Send Message");
+    private class ClientHandler implements Runnable {
+        private Socket clientSocket;
+        private ObjectOutputStream outputStream;
+
+        public ClientHandler(Socket socket, ObjectOutputStream outputStream) {
+            this.clientSocket = socket;
+            this.outputStream = outputStream;
+        }
+
+        @Override
+        public void run() {
+            try {
+                ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
+
+                while (true) {
+                    String message = (String) inputStream.readObject();
+                    System.out.println("Received: " + message);
+                    broadcastMessage(message);
+                }
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    clientSocket.close();
+                    clientOutputStreams.remove(outputStream);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
     public static void main(String[] args) {
-        new ChatServer();
+        new chat_server();
     }
 }
