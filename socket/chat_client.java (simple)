@@ -3,15 +3,16 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.*;
 
-public class ChatClient {
+public class chat_client {
 
     private ObjectOutputStream output;
     private ObjectInputStream input;
     private String serverIP;
     private Socket connection;
     private int port = 8888;
+    private JTextArea chatArea; // Define chatArea as an instance variable
 
-    public ChatClient(String serverIP) {
+    public chat_client(String serverIP) {
         this.serverIP = serverIP;
         initComponents();
     }
@@ -23,7 +24,7 @@ public class ChatClient {
         JPanel panel = new JPanel();
         frame.add(panel);
 
-        JTextArea chatArea = new JTextArea(10, 30);
+        chatArea = new JTextArea(10, 30);
         chatArea.setEditable(false);
         JScrollPane scrollPane = new JScrollPane(chatArea);
         panel.add(scrollPane);
@@ -65,7 +66,8 @@ public class ChatClient {
         try {
             String message;
             while ((message = (String) input.readObject()) != null) {
-                System.out.println(message);
+                // Append the received message to the chatArea
+                chatArea.append(message + "\n");
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -83,6 +85,6 @@ public class ChatClient {
 
     public static void main(String[] args) {
         String serverIP = JOptionPane.showInputDialog("Enter the server IP address:");
-        new ChatClient(serverIP);
+        new chat_client(serverIP);
     }
 }
