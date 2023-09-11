@@ -1,0 +1,88 @@
+import javax.swing.*;
+import java.awt.event.*;
+import java.io.*;
+import java.net.*;
+
+public class ChatClient {
+
+    private ObjectOutputStream output;
+    private ObjectInputStream input;
+    private String serverIP;
+    private Socket connection;
+    private int port = 8888;
+
+    public ChatClient(String serverIP) {
+        this.serverIP = serverIP;
+        initComponents();
+    }
+
+    private void initComponents() {
+        JFrame frame = new JFrame("Chat Client");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        JPanel panel = new JPanel();
+        frame.add(panel);
+
+        JTextArea chatArea = new JTextArea(10, 30);
+        chatArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(chatArea);
+        panel.add(scrollPane);
+
+        JTextField messageField = new JTextField(20);
+        panel.add(messageField);
+
+        JButton sendButton = new JButton("Send");
+        panel.add(sendButton);
+
+        sendButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                sendMessage(messageField.getText());
+                messageField.setText("");
+            }
+        });
+
+        frame.pack();
+        frame.setVisible(true);
+
+        startRunning();
+    }
+
+    public void startRunning() {
+        try {
+            connection = new Socket(InetAddress.getByName(serverIP), port);
+            output = new ObjectOutputStream(connection.getOutputStream());
+            output.flush();
+            input = new ObjectInputStream(connection.getInputStream());
+
+            whileChatting();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+    }
+
+    private void whileChatting() {
+        try {
+            String message;
+            while ((message = (String) input.readObject()) != null) {
+                System.out.println(message);
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendMessage(String message) {
+        try {
+            output.writeObject(message);
+            output.flush();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        String serverIP = JOptionPane.showInputDialog("Enter the server IP address:");
+        new ChatClient(serverIP);
+    }
+}
