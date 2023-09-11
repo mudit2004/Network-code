@@ -1,0 +1,70 @@
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+
+public class ChatServer {
+
+    private ObjectOutputStream output;
+    private ObjectInputStream input;
+    private Socket connection; // for client using TCP communication
+    private ServerSocket server; // listen for clients
+    private int totalClients = 50;
+    private int port = 8888;
+
+    public ChatServer() {
+        startRunning();
+    }
+
+    public void startRunning() {
+        try {
+            server = new ServerSocket(port, totalClients);
+            while (true) {
+                try {
+                    System.out.println("Waiting for Someone to Connect...");
+                    connection = server.accept(); // establishes connection and waits for the client
+                    System.out.println("Connected");
+
+                    output = new ObjectOutputStream(connection.getOutputStream());
+                    output.flush();
+                    input = new ObjectInputStream(connection.getInputStream());
+
+                    whileChatting();
+
+                } catch (EOFException eofException) {
+                }
+            }
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+    }
+
+    private void whileChatting() throws IOException {
+        String message = "";
+        int ctr = 0;
+        do {
+            ctr++;
+            try {
+                message = (String) input.readObject(); // casting object to string
+                System.out.println("\n" + message);
+            } catch (ClassNotFoundException classNotFoundException) {
+            }
+        } while (ctr < 10);
+    }
+
+    private void sendMessage(String message) {
+        try {
+            System.out.println("Server - " + message);
+            output.writeObject("Server - " + message);
+            output.flush();
+        } catch (IOException ioException) {
+            System.out.println("Unable to Send Message");
+        }
+    }
+
+    public static void main(String[] args) {
+        new ChatServer();
+    }
+}
